@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">YouMovie</string>
+    <string name="movie_poster">Movie Poster</string>
+    <string name="movie_overview">Overview</string>
+    <string name="movie_backdrop">Movie Backdrop</string>
+    <string name="movie_title">Movie Title</string>
+    <string name="overview_label_icon">Overview Label Icon</string>
+    <string name="sort_title_icon">Sort Title Icon</string>
+
+    <!-- Messages -->
+    <string name="not_connected_message">Please make sure that your device has network connectivity</string>
+    <string name="not_able_to_get_data">Unable to retrieve data from server</string>
+
+    <!-- Menus -->
+    <string name="popular">Popular</string>
+    <string name="top_rated">Top Rated</string>
+</resources>

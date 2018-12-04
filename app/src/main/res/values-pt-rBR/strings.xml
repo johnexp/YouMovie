@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">YouMovie</string>
+    <string name="movie_poster">Poster</string>
+    <string name="movie_overview">Sinopse</string>
+    <string name="movie_backdrop">Cartaz</string>
+    <string name="movie_title">Título</string>
+    <string name="overview_label_icon">Ícone do label de overview</string>
+    <string name="sort_title_icon">Ícone do título do tipo de ordenação</string>
+
+    <!-- Messages -->
+    <string name="not_connected_message">Por favor, verifique se seu dispositivo possui conexão com a internet</string>
+    <string name="not_able_to_get_data">Não foi possível obter os dados do servidor</string>
+
+    <!-- Menus -->
+    <string name="popular">Mais Populares</string>
+    <string name="top_rated">Melhores Avaliações</string>
+</resources>

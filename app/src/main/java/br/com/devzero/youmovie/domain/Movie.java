@@ -1,5 +1,7 @@
 package br.com.devzero.youmovie.domain;
 
+import android.os.Parcel;
+import android.os.Parcelable;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -17,7 +19,7 @@ import java.util.Map;
         "original_language", "original_title", "overview", "popularity", "poster_path", "production_companies",
         "production_countries", "release_date", "revenue", "runtime", "spoken_languages", "status", "tagline", "title",
         "video", "vote_average", "vote_count"})
-public class Movie {
+public class Movie implements Parcelable {
 
     @JsonProperty("adult")
     private Boolean adult;
@@ -96,6 +98,80 @@ public class Movie {
 
     @JsonIgnore
     private Map<String, Object> additionalProperties = new HashMap<>();
+
+    public Movie() {
+
+    }
+
+    public Movie(Parcel parcel) {
+        byte tmpAdult = parcel.readByte();
+        adult = tmpAdult == 0 ? null : tmpAdult == 1;
+        backdropPath = parcel.readString();
+        if (parcel.readByte() == 0) {
+            budget = null;
+        } else {
+            budget = parcel.readLong();
+        }
+        parcel.readList(genres, Genre.class.getClassLoader());
+        homepage = parcel.readString();
+        if (parcel.readByte() == 0) {
+            id = null;
+        } else {
+            id = parcel.readLong();
+        }
+        imdbId = parcel.readString();
+        originalLanguage = parcel.readString();
+        originalTitle = parcel.readString();
+        overview = parcel.readString();
+        if (parcel.readByte() == 0) {
+            popularity = null;
+        } else {
+            popularity = parcel.readDouble();
+        }
+        posterPath = parcel.readString();
+        parcel.readList(productionCompanies, ProductionCompany.class.getClassLoader());
+        parcel.readList(productionCountries, ProductionCountry.class.getClassLoader());
+        releaseDate = (Date) parcel.readSerializable();
+        if (parcel.readByte() == 0) {
+            revenue = null;
+        } else {
+            revenue = parcel.readLong();
+        }
+        if (parcel.readByte() == 0) {
+            runtime = null;
+        } else {
+            runtime = parcel.readLong();
+        }
+        parcel.readList(spokenLanguages, SpokenLanguage.class.getClassLoader());
+        status = parcel.readString();
+        tagline = parcel.readString();
+        title = parcel.readString();
+        byte tmpVideo = parcel.readByte();
+        video = tmpVideo == 0 ? null : tmpVideo == 1;
+        if (parcel.readByte() == 0) {
+            voteAverage = null;
+        } else {
+            voteAverage = parcel.readDouble();
+        }
+        if (parcel.readByte() == 0) {
+            voteCount = null;
+        } else {
+            voteCount = parcel.readLong();
+        }
+        parcel.readMap(additionalProperties, Map.class.getClassLoader());
+    }
+
+    public static final Creator<Movie> CREATOR = new Creator<Movie>() {
+        @Override
+        public Movie createFromParcel(Parcel in) {
+            return new Movie(in);
+        }
+
+        @Override
+        public Movie[] newArray(int size) {
+            return new Movie[size];
+        }
+    };
 
     @JsonProperty("adult")
     public Boolean getAdult() {
@@ -357,4 +433,38 @@ public class Movie {
         this.additionalProperties.put(name, value);
     }
 
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel parcel, int i) {
+        parcel.writeByte((byte) (adult != null && adult ? 1 : 0));
+        parcel.writeString(backdropPath);
+        parcel.writeValue(belongsToCollection);
+        parcel.writeLong(budget);
+        parcel.writeList(genres);
+        parcel.writeString(homepage);
+        parcel.writeLong(id);
+        parcel.writeString(imdbId);
+        parcel.writeString(originalLanguage);
+        parcel.writeString(originalTitle);
+        parcel.writeString(overview);
+        parcel.writeDouble(popularity);
+        parcel.writeString(posterPath);
+        parcel.writeList(productionCompanies);
+        parcel.writeList(productionCountries);
+        parcel.writeSerializable(releaseDate);
+        parcel.writeLong(revenue);
+        parcel.writeLong(runtime);
+        parcel.writeList(spokenLanguages);
+        parcel.writeString(status);
+        parcel.writeString(tagline);
+        parcel.writeString(title);
+        parcel.writeByte((byte) (video != null && video ? 1 : 0));
+        parcel.writeDouble(voteAverage);
+        parcel.writeLong(voteCount);
+        parcel.writeMap(additionalProperties);
+    }
 }

@@ -1,10 +1,10 @@
 package br.com.devzero.youmovie.utilities;
 
 import android.net.Uri;
-import br.com.devzero.youmovie.data.ApiData;
+import br.com.devzero.youmovie.BuildConfig;
+import br.com.devzero.youmovie.constants.AnnotationSortBy.SortBy;
 import br.com.devzero.youmovie.domain.Movie;
 import br.com.devzero.youmovie.domain.QueryResult;
-import br.com.devzero.youmovie.enumeration.EnumSortBy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -35,13 +35,13 @@ public class NetworkUtils {
     /**
      * Builds URL to get a movies list according to the user's selected sort type
      */
-    public static URL buildFindMoviesUrl(EnumSortBy sortBy) {
+    public static URL buildFindMoviesUrl(@SortBy String sortBy) {
         Uri builtUri = Uri.parse(TMDB_API_BASE_URL)
                 .buildUpon()
                 .appendPath(API_VERSION)
                 .appendPath(MOVIE_QUERY_PATH)
-                .appendEncodedPath(sortBy.getPath())
-                .appendQueryParameter(API_QUERY, ApiData.API_KEY)
+                .appendEncodedPath(sortBy)
+                .appendQueryParameter(API_QUERY, BuildConfig.TmdbApiKey)
                 .appendQueryParameter(LANGUAGE, Locale.getDefault()
                         .toLanguageTag())
                 .build();
@@ -62,7 +62,7 @@ public class NetworkUtils {
                 .appendPath(API_VERSION)
                 .appendPath(MOVIE_QUERY_PATH)
                 .appendPath(movieId.toString())
-                .appendQueryParameter(API_QUERY, ApiData.API_KEY)
+                .appendQueryParameter(API_QUERY, BuildConfig.TmdbApiKey)
                 .appendQueryParameter(LANGUAGE, Locale.getDefault()
                         .toLanguageTag())
                 .build();

@@ -6,7 +6,6 @@ import android.content.SharedPreferences;
 import android.graphics.PorterDuff.Mode;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
@@ -19,13 +18,14 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 import br.com.devzero.youmovie.MoviesAdapter.MoviesAdapterOnClickHandler;
+import br.com.devzero.youmovie.constants.AnnotationSortBy;
+import br.com.devzero.youmovie.constants.AnnotationSortBy.SortBy;
 import br.com.devzero.youmovie.domain.Movie;
 import br.com.devzero.youmovie.utilities.NetworkUtils;
-import br.com.devzero.youmovie.enumeration.EnumSortBy;
+import br.com.devzero.youmovie.utilities.OnEventListener;
 import br.com.devzero.youmovie.utilities.ToastUtils;
 import butterknife.BindView;
 import butterknife.ButterKnife;
-import java.io.IOException;
 import java.net.URL;
 import java.util.List;
 
@@ -49,7 +49,8 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapterOnCl
 
     private static final String SORT_PREFERENCES = "SORT_BY";
 
-    private EnumSortBy sortBy = EnumSortBy.POPULAR_ENDPOINT;
+    @SortBy
+    private String mSortBy = AnnotationSortBy.POPULAR_ENDPOINT;
 
     @BindView(R.id.sr_movies_list)
     protected SwipeRefreshLayout mSwipeRefreshLayout;
@@ -94,13 +95,13 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapterOnCl
         if (!mSwipeRefreshLayout.isRefreshing()) {
             switch (item.getItemId()) {
                 case R.id.action_popular:
-                    if (getSortPreference().equals(EnumSortBy.TOP_RATED_ENDPOINT)) {
-                        this.findMovies(EnumSortBy.POPULAR_ENDPOINT);
+                    if (getSortPreference().equals(AnnotationSortBy.TOP_RATED_ENDPOINT)) {
+                        this.findMovies(AnnotationSortBy.POPULAR_ENDPOINT);
                     }
                     return true;
                 case R.id.action_top_rated:
-                    if (getSortPreference().equals(EnumSortBy.POPULAR_ENDPOINT)) {
-                        this.findMovies(EnumSortBy.TOP_RATED_ENDPOINT);
+                    if (getSortPreference().equals(AnnotationSortBy.POPULAR_ENDPOINT)) {
+                        this.findMovies(AnnotationSortBy.TOP_RATED_ENDPOINT);
                     }
                     return true;
             }
@@ -111,10 +112,10 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapterOnCl
     /**
      * Saves user's list type into android preferences to keep what the user last listed
      */
-    private void saveSortPreference(EnumSortBy sortBy) {
+    private void saveSortPreference(@SortBy String sortBy) {
         SharedPreferences sharedPreferences = this.getSharedPreferences(SORT_PREFERENCES, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putString(SORT_PREFERENCES, sortBy.toString());
+        editor.putString(SORT_PREFERENCES, sortBy);
         editor.apply();
         editor.commit();
     }
@@ -122,30 +123,59 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapterOnCl
     /**
      * Retrieves list type from android preferences
      */
-    private EnumSortBy getSortPreference() {
+    private @SortBy
+    String getSortPreference() {
         SharedPreferences sharedPreferences = this.getSharedPreferences(SORT_PREFERENCES, Context.MODE_PRIVATE);
-        try {
-            return EnumSortBy.valueOf(sharedPreferences.getString(SORT_PREFERENCES, null));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return EnumSortBy.POPULAR_ENDPOINT;
+        String sortPreferences = sharedPreferences.getString(SORT_PREFERENCES, null);
+        if (sortPreferences != null) {
+            return sortPreferences;
         }
+        return AnnotationSortBy.POPULAR_ENDPOINT;
     }
 
     /**
      * Fetch movies according to sort type
      */
-    private void findMovies(EnumSortBy sortBy) {
+    private void findMovies(@SortBy String sortBy) {
         if (!hasInternetConnection()) {
             ToastUtils.showToast(this, R.string.not_connected_message, Toast.LENGTH_LONG);
             mSwipeRefreshLayout.setRefreshing(false);
             return;
         }
         URL moviesSearchUrl = NetworkUtils.buildFindMoviesUrl(sortBy);
-        this.sortBy = sortBy;
+        this.mSortBy = sortBy;
         setSortTitle();
         invalidateOptionsMenu();
-        new FetchMoviesTask().execute(moviesSearchUrl);
+        FetchMoviesTask fetchMoviesTask = getFetchMoviesTask();
+        fetchMoviesTask.execute(moviesSearchUrl);
+    }
+
+    private FetchMoviesTask getFetchMoviesTask() {
+        return new FetchMoviesTask(new OnEventListener<List<Movie>>() {
+            @Override
+            public void onPreExecute() {
+                mSwipeRefreshLayout.setRefreshing(true);
+                getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+            }
+
+            @Override
+            public void onSuccess(List<Movie> movieList) {
+                mSwipeRefreshLayout.setRefreshing(false);
+                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+                saveSortPreference(mSortBy);
+                if (movieList != null) {
+                    mMoviesAdapter.setMoviesList(movieList);
+                    mRecyclerView.stopScroll();
+                    mLayoutManager.scrollToPosition(0);
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                ToastUtils.showToast(MainActivity.this, R.string.not_able_to_get_data, Toast.LENGTH_LONG);
+            }
+        });
     }
 
     /**
@@ -153,7 +183,7 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapterOnCl
      */
     private void setSortTitle() {
         StringBuilder stringBuilder = new StringBuilder();
-        if (sortBy.equals(EnumSortBy.TOP_RATED_ENDPOINT)) {
+        if (mSortBy.equals(AnnotationSortBy.TOP_RATED_ENDPOINT)) {
             stringBuilder.append(getString(R.string.top_rated));
             mSortTitleIcon.setImageResource(R.drawable.baseline_star_black_48);
         } else {
@@ -166,7 +196,7 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapterOnCl
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-        if (sortBy.equals(EnumSortBy.TOP_RATED_ENDPOINT)) {
+        if (mSortBy.equals(AnnotationSortBy.TOP_RATED_ENDPOINT)) {
             MenuItem menuItemTopRated = menu.findItem(R.id.action_top_rated);
             menuItemTopRated.setIcon(R.drawable.baseline_star_white_48);
             MenuItem menuItemPopular = menu.findItem(R.id.action_popular);
@@ -189,44 +219,6 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapterOnCl
         Intent movieDetailActivityIntent = new Intent(this, MovieDetailActivity.class);
         movieDetailActivityIntent.putExtra(Intent.EXTRA_INDEX, movieId);
         startActivity(movieDetailActivityIntent);
-    }
-
-    /**
-     * Async task for handling requests to the movies API
-     */
-    class FetchMoviesTask extends AsyncTask<URL, Void, List<Movie>> {
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            mSwipeRefreshLayout.setRefreshing(true);
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-        }
-
-        @Override
-        protected List<Movie> doInBackground(URL... params) {
-            URL searchUrl = params[0];
-            try {
-                return NetworkUtils.getMoviesList(searchUrl);
-            } catch (IOException e) {
-                ToastUtils.showToast(MainActivity.this, R.string.not_able_to_get_data, Toast.LENGTH_LONG);
-                e.printStackTrace();
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(List<Movie> movieList) {
-            mSwipeRefreshLayout.setRefreshing(false);
-            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-            saveSortPreference(sortBy);
-            if (movieList != null) {
-                mMoviesAdapter.setMoviesList(movieList);
-                mRecyclerView.stopScroll();
-                mLayoutManager.scrollToPosition(0);
-            }
-        }
     }
 
     /**

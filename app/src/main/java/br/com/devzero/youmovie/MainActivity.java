@@ -7,6 +7,10 @@ import android.graphics.PorterDuff.Mode;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.Loader;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
@@ -32,7 +36,8 @@ import java.util.List;
 /**
  * Application's Main activity. This is the application's entry point and holds the movies list.
  */
-public class MainActivity extends AppCompatActivity implements MoviesAdapterOnClickHandler {
+public class MainActivity extends AppCompatActivity implements MoviesAdapterOnClickHandler,
+        LoaderManager.LoaderCallbacks<List<Movie>> {
 
     @BindView(R.id.rc_movies)
     protected RecyclerView mRecyclerView;
@@ -55,6 +60,8 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapterOnCl
     @BindView(R.id.sr_movies_list)
     protected SwipeRefreshLayout mSwipeRefreshLayout;
 
+    private static final int TMDB_SEARCH_LOADER = 1;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -76,6 +83,12 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapterOnCl
         });
         mSwipeRefreshLayout.setColorSchemeResources(R.color.colorAccent, R.color.colorPrimary,
                 R.color.colorPrimaryDark);
+
+        if (savedInstanceState != null) {
+            // TODO: Algo precisa ser feito aqui...
+            String queryUrl = savedInstanceState.getString(FetchMoviesTask.SEARCH_QUERY_URL);
+        }
+        getSupportLoaderManager().restartLoader(TMDB_SEARCH_LOADER, savedInstanceState, this);
     }
 
     @Override
@@ -146,36 +159,17 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapterOnCl
         this.mSortBy = sortBy;
         setSortTitle();
         invalidateOptionsMenu();
-        FetchMoviesTask fetchMoviesTask = getFetchMoviesTask();
-        fetchMoviesTask.execute(moviesSearchUrl);
-    }
 
-    private FetchMoviesTask getFetchMoviesTask() {
-        return new FetchMoviesTask(new OnEventListener<List<Movie>>() {
-            @Override
-            public void onPreExecute() {
-                mSwipeRefreshLayout.setRefreshing(true);
-                getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-                        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-            }
+        Bundle queryBundle = new Bundle();
+        queryBundle.putString(FetchMoviesTask.SEARCH_QUERY_URL, moviesSearchUrl.toString());
 
-            @Override
-            public void onSuccess(List<Movie> movieList) {
-                mSwipeRefreshLayout.setRefreshing(false);
-                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-                saveSortPreference(mSortBy);
-                if (movieList != null) {
-                    mMoviesAdapter.setMoviesList(movieList);
-                    mRecyclerView.stopScroll();
-                    mLayoutManager.scrollToPosition(0);
-                }
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-                ToastUtils.showToast(MainActivity.this, R.string.not_able_to_get_data, Toast.LENGTH_LONG);
-            }
-        });
+        LoaderManager loaderManager = getSupportLoaderManager();
+        Loader<String> githubSearchLoader = loaderManager.getLoader(TMDB_SEARCH_LOADER);
+        if (githubSearchLoader == null) {
+            loaderManager.initLoader(TMDB_SEARCH_LOADER, queryBundle, this);
+        } else {
+            loaderManager.restartLoader(TMDB_SEARCH_LOADER, queryBundle, this);
+        }
     }
 
     /**
@@ -233,5 +227,35 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapterOnCl
         }
         NetworkInfo netInfo = cm.getActiveNetworkInfo();
         return (netInfo != null && netInfo.isConnected());
+    }
+
+    @NonNull
+    @Override
+    public Loader<List<Movie>> onCreateLoader(int i, @Nullable Bundle bundle) {
+        return new FetchMoviesTask(this, new OnEventListener<List<Movie>>() {
+            @Override
+            public void onStart() {
+                mSwipeRefreshLayout.setRefreshing(true);
+                getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+            }
+        }, bundle);
+    }
+
+    @Override
+    public void onLoadFinished(@NonNull Loader<List<Movie>> loader, List<Movie> movieList) {
+        mSwipeRefreshLayout.setRefreshing(false);
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+        saveSortPreference(mSortBy);
+        if (movieList != null) {
+            mMoviesAdapter.setMoviesList(movieList);
+            mRecyclerView.stopScroll();
+            mLayoutManager.scrollToPosition(0);
+        }
+    }
+
+    @Override
+    public void onLoaderReset(@NonNull Loader<List<Movie>> loader) {
+
     }
 }
